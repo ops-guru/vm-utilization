@@ -63,10 +63,10 @@ Update `terraform.tfvars` with your actual values:
 
 ```hcl
 # Update these with your actual values:
-ssh_public_key        = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC7... your_actual_public_key"
-aws_access_key_id     = "AKIA...your_actual_access_key"
-aws_secret_access_key = "wJalrXUtn...your_actual_secret_key"
-s3_bucket_name       = "your-actual-bucket-name"
+ssh_public_key        = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC7... <YOUR_ACTUAL_PUBLIC_KEY>"
+aws_access_key_id     = "<YOUR_AWS_ACCESS_KEY>"
+aws_secret_access_key = "<YOUR_AWS_SECRET_KEY>"
+s3_bucket_name       = "<YOUR_BUCKET_NAME>"
 ```
 
 ## Step 4: Deploy Azure Infrastructure
@@ -74,7 +74,7 @@ s3_bucket_name       = "your-actual-bucket-name"
 Navigate to the azure-lab directory and deploy:
 
 ```bash
-cd /Users/antonmishel/workspace/azure-lab
+cd /path/to/your/azure-lab
 
 # Initialize Terraform
 terraform init
@@ -103,15 +103,15 @@ After deployment, note the outputs:
 2. **Install VM Utilization Agent:**
    ```bash
    # Copy the install.sh script to the VM
-   scp -i ~/.ssh/azure_lab_key /Users/antonmishel/workspace/azure-lab/install.sh azureuser@<LINUX_VM_PUBLIC_IP>:~/
+   scp -i ~/.ssh/azure_lab_key install.sh azureuser@<LINUX_VM_PUBLIC_IP>:~/
 
    # Run the installation
    sudo ./install.sh \
      --telegraf-url "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz" \
-     --bucket "your-bucket-name" \
+     --bucket "<YOUR_BUCKET_NAME>" \
      --region "us-east-1" \
-     --access-key "AKIA..." \
-     --secret-key "wJalrXUtn..."
+     --access-key "<YOUR_AWS_ACCESS_KEY>" \
+     --secret-key "<YOUR_AWS_SECRET_KEY>"
    ```
 
 3. **Verify Installation:**
@@ -135,7 +135,7 @@ After deployment, note the outputs:
    sudo find /var/lib/vm-metrics/ -name "*.json" -exec tail -n 5 {} \;
 
    # Verify S3 upload (wait 5+ minutes after installation)
-   aws s3 ls s3://your-bucket-name/vm-metrics/ --recursive
+   aws s3 ls s3://<YOUR_BUCKET_NAME>/vm-metrics/ --recursive
    ```
 
 ## Step 6: Test Windows VM Installation
@@ -143,7 +143,7 @@ After deployment, note the outputs:
 1. **Connect to Windows VM:**
    - Use RDP client to connect to `<WINDOWS_VM_PUBLIC_IP>:3389`
    - Username: `azureuser`
-   - Password: `SecureVMPassword123!`
+   - Password: `<YOUR_VM_PASSWORD>` (as configured in terraform.tfvars)
 
 2. **Install VM Utilization Agent:**
    ```powershell
@@ -152,10 +152,10 @@ After deployment, note the outputs:
    
    .\install.ps1 `
      -TelegrafUrl "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_windows_amd64.zip" `
-     -Bucket "your-bucket-name" `
+     -Bucket "<YOUR_BUCKET_NAME>" `
      -Region "us-east-1" `
-     -AccessKey "AKIA..." `
-     -SecretKey "wJalrXUtn..."
+     -AccessKey "<YOUR_AWS_ACCESS_KEY>" `
+     -SecretKey "<YOUR_AWS_SECRET_KEY>"
    ```
 
 3. **Verify Installation:**
@@ -188,10 +188,10 @@ Check that metrics are being uploaded to S3:
 
 ```bash
 # List all uploaded metrics
-aws s3 ls s3://your-bucket-name/vm-metrics/ --recursive
+aws s3 ls s3://<YOUR_BUCKET_NAME>/vm-metrics/ --recursive
 
 # Download and inspect a metrics file
-aws s3 cp s3://your-bucket-name/vm-metrics/azlab-linux-vm/metrics_$(date +%Y%m%d).json ./test-metrics.json
+aws s3 cp s3://<YOUR_BUCKET_NAME>/vm-metrics/azlab-linux-vm/metrics_$(date +%Y%m%d).json ./test-metrics.json
 cat test-metrics.json | jq '.'
 ```
 
@@ -247,12 +247,12 @@ When testing is complete:
 
 ```bash
 # Destroy Azure resources
-cd /Users/antonmishel/workspace/azure-lab
+cd /path/to/your/azure-lab
 terraform destroy
 
 # Clean up AWS resources
-aws s3 rm s3://your-bucket-name --recursive
-aws s3 rb s3://your-bucket-name
+aws s3 rm s3://<YOUR_BUCKET_NAME> --recursive
+aws s3 rb s3://<YOUR_BUCKET_NAME>
 aws iam delete-access-key --user-name vm-metrics-test-user --access-key-id <ACCESS_KEY_ID>
 aws iam delete-user-policy --user-name vm-metrics-test-user --policy-name S3MetricsAccess
 aws iam delete-user --user-name vm-metrics-test-user
@@ -294,5 +294,7 @@ aws iam delete-user --user-name vm-metrics-test-user
 - Metrics files: `C:\ProgramData\vm-metrics\`
 
 ---
+
+**⚠️ SECURITY NOTE:** Ensure all sensitive information (SSH keys, AWS credentials, passwords) are properly secured and never committed to version control. This guide uses placeholder values that must be replaced with your actual credentials during testing.
 
 Once testing is complete and successful, proceed to push all files to the GitHub repository as instructed. 

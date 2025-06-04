@@ -1,0 +1,96 @@
+# Sensitive Files - Never commit these!
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.pub
+ssh_host_*
+known_hosts
+authorized_keys
+
+# AWS Credentials
+.aws/
+aws-credentials
+*.aws
+credentials
+
+# Azure Credentials
+.azure/
+azureProfile.json
+*.azureauth
+
+# Terraform files with sensitive data
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets and passwords
+secrets/
+passwords/
+*secret*
+*password*
+*credential*
+
+# Test data with potentially sensitive info
+test-results/
+test-output/
+test-metrics.json
+
+# Log files that might contain sensitive data
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*.tmp
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js (if used for automation)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if used for automation)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/ 
