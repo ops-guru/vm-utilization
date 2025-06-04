@@ -4,25 +4,45 @@ A Telegraf-based utilization agent that collects CPU, memory, and disk metrics f
 
 ## 🚀 Quick Start
 
-### Linux (One-liner Installation)
+### Option 1: Environment Variables (Recommended)
 
+**Linux/macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ops-guru/vm-utilization/main/install.sh | sudo bash -s -- \
-  --telegraf-url "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz" \
-  --bucket "<YOUR-BUCKET>" \
-  --region "<REGION>" \
-  --access-key "<AKIA...>" \
-  --secret-key "<wJalrXUtn...>"
+# Interactive setup
+./setup-env.sh
+
+# Install agent
+sudo ./install.sh
 ```
 
-### Windows (One-liner Installation)
-
+**Windows:**
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; `
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
-iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/ops-guru/vm-utilization/main/install.ps1')); `
-Install-VMUtilAgent -TelegrafUrl "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_windows_amd64.zip" `
-  -Bucket "<YOUR-BUCKET>" -Region "<REGION>" -AccessKey "<AKIA...>" -SecretKey "<wJalrXUtn...>"
+# Create environment file
+cp env-template.ps1 .env.ps1
+# Edit .env.ps1 with your values
+
+# Load environment and install
+. .\.env.ps1
+.\install.ps1
+```
+
+### Option 2: Command Line Arguments
+
+**Linux:**
+```bash
+sudo ./install.sh \
+  --telegraf-url "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz" \
+  --bucket "your-s3-bucket" \
+  --access-key "YOUR_AWS_ACCESS_KEY" \
+  --secret-key "YOUR_AWS_SECRET_KEY"
+```
+
+**Windows:**
+```powershell
+.\install.ps1 -TelegrafUrl "https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_windows_amd64.zip" `
+              -Bucket "your-s3-bucket" `
+              -AccessKey "YOUR_AWS_ACCESS_KEY" `
+              -SecretKey "YOUR_AWS_SECRET_KEY"
 ```
 
 ## 📋 What It Does
@@ -42,6 +62,10 @@ vm-utilization/
 ├── VM-Utilisation-Agent-Installation-Guide.md  # Comprehensive installation guide
 ├── install.sh                                   # Linux installation script
 ├── install.ps1                                  # Windows installation script
+├── setup-env.sh                                 # Interactive environment setup
+├── env-template.txt                             # Linux environment template
+├── env-template.ps1                             # Windows environment template
+├── ENVIRONMENT-SETUP.md                         # Detailed environment setup guide
 └── docs/                                        # Additional documentation
 ```
 
@@ -59,17 +83,31 @@ vm-utilization/
 | **AWS Credentials** | S3 write permissions | S3 write permissions | For metrics upload |
 | **S3 Bucket** | Pre-existing | Pre-existing | Target for metrics storage |
 
-## 🔧 Installation Parameters
+## 🔧 Configuration
 
-Both scripts accept the following parameters:
+The installation scripts support multiple configuration methods with the following priority:
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `--telegraf-url` / `-TelegrafUrl` | Telegraf download URL | `https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz` |
-| `--bucket` / `-Bucket` | S3 bucket name | `my-vm-metrics-bucket` |
-| `--region` / `-Region` | AWS region | `us-east-1` |
-| `--access-key` / `-AccessKey` | AWS access key | `AKIA...` |
-| `--secret-key` / `-SecretKey` | AWS secret key | `wJalrXUtn...` |
+1. **Environment Variables** (highest priority)
+2. **Command Line Arguments** (fallback)
+3. **Default Values** (lowest priority)
+
+### Required Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VM_TELEGRAF_URL` | Telegraf download URL | `https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz` |
+| `VM_S3_BUCKET` | S3 bucket for metrics storage | `my-vm-metrics-bucket` |
+| `VM_AWS_ACCESS_KEY` | AWS access key ID | `AKIA...` |
+| `VM_AWS_SECRET_KEY` | AWS secret access key | `wJalrXUtn...` |
+
+### Optional Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VM_AWS_REGION` | AWS region | `us-east-1` |
+| `VM_CUSTOMER_ID` | Customer identifier | `default-customer` |
+
+For detailed configuration options, see [ENVIRONMENT-SETUP.md](ENVIRONMENT-SETUP.md).
 
 ## 📊 Metrics Collected
 

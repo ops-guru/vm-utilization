@@ -1,0 +1,27 @@
+# VM Utilization Agent - Environment Variables Template
+# Copy this file to .env and fill in your actual values
+
+# Telegraf Configuration
+VM_TELEGRAF_URL="https://dl.influxdata.com/telegraf/releases/telegraf-1.34.4_linux_amd64.tar.gz"
+
+# AWS S3 Configuration
+VM_S3_BUCKET="your-metrics-bucket-name"
+VM_AWS_REGION="us-east-1"
+VM_AWS_ACCESS_KEY="AKIA..."
+VM_AWS_SECRET_KEY="wJalrXUtn..."
+
+# Customer Configuration
+VM_CUSTOMER_ID="your-customer-id"
+
+# IMPORTANT NOTES:
+# 1. Never commit this file with real credentials to version control
+# 2. The .gitignore file is configured to exclude .env files
+# 3. For Windows, use .env.ps1 format instead
+# 4. Ensure the S3 bucket exists and your AWS credentials have appropriate permissions
+
+# Required S3 Permissions:
+# - s3:PutObject
+# - s3:PutObjectAcl  
+# - s3:GetObject
+# - s3:ListBucket
+# - s3:DeleteObject (for cleanup) 
