@@ -74,6 +74,42 @@ The installer automatically:
 - **Minimal Footprint**: ~2-5 MB storage per day per VM
 - **Cross-Platform**: Works on all major Linux distributions and Windows
 
+## 📊 Analytics and Reporting
+
+Once metrics are collected and stored in S3, you can perform powerful analytics using AWS Athena:
+
+### Serverless SQL Analytics
+- **No infrastructure** - Query directly from S3 using standard SQL
+- **Cost-effective** - Pay only for queries you run
+- **Scalable** - Handles petabytes of data automatically
+- **Fast** - Optimized for JSON data with proper partitioning
+
+### Key Analytics Capabilities
+- **Real-time Monitoring** - Current system status across your fleet
+- **Historical Analysis** - Trends and patterns over time
+- **Performance Optimization** - Identify bottlenecks and inefficiencies  
+- **Cost Optimization** - Find underutilized resources for downsizing
+- **Capacity Planning** - Predict future resource needs
+- **Custom Alerting** - SQL-based thresholds and notifications
+
+### Sample Queries
+```sql
+-- Get current CPU usage across all VMs
+SELECT tags.host, AVG(fields.usage_active) as avg_cpu 
+FROM vm_metrics_db.vm_utilization 
+WHERE name = 'cpu' AND timestamp > UNIX_TIMESTAMP() - 300
+GROUP BY tags.host;
+
+-- Find underutilized VMs for cost savings
+SELECT tags.host, AVG(fields.usage_active) as avg_cpu
+FROM vm_metrics_db.vm_utilization 
+WHERE name = 'cpu' AND timestamp > UNIX_TIMESTAMP() - 604800
+GROUP BY tags.host 
+HAVING AVG(fields.usage_active) < 15;
+```
+
+For complete SQL examples and setup instructions, see **[Athena Analytics Guide](ATHENA-ANALYTICS.md)**.
+
 ## 📁 Repository Structure
 
 ```
@@ -86,8 +122,10 @@ vm-utilization/
 ├── env-template.txt              # Linux environment template
 ├── env-template-windows.ps1      # Windows environment template
 ├── ENVIRONMENT-SETUP.md          # Detailed environment setup guide
+├── ATHENA-ANALYTICS.md           # SQL analytics with AWS Athena
 ├── LIVE-TESTING-REPORT.md        # Live Azure testing results
 ├── SECURITY.md                   # Security considerations
+├── CHANGELOG.md                  # Version history and changes
 └── docs/                         # Additional documentation
 ```
 
@@ -96,6 +134,7 @@ vm-utilization/
 - **[Environment Setup Guide](ENVIRONMENT-SETUP.md)** - Detailed configuration setup
 - **[Live Testing Report](LIVE-TESTING-REPORT.md)** - Real-world Azure deployment results
 - **[Security Guide](SECURITY.md)** - Security best practices and compliance
+- **[Athena Analytics Guide](ATHENA-ANALYTICS.md)** - SQL analytics and reporting with AWS Athena
 
 ## 🛠 Prerequisites
 
