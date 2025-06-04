@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # VM Utilization Agent Installer for Linux
+# Supports multiple Linux distributions: Ubuntu, Debian, CentOS, RHEL, Fedora, SUSE, Alpine
 # Supports environment variables and command-line arguments
 # Environment variables take precedence over command-line arguments
 
@@ -30,6 +31,167 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Detect Linux distribution
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO=$ID
+        VERSION=$VERSION_ID
+    elif [ -f /etc/redhat-release ]; then
+        DISTRO="rhel"
+    elif [ -f /etc/debian_version ]; then
+        DISTRO="debian"
+    else
+        DISTRO="unknown"
+    fi
+    
+    log_info "Detected Linux distribution: $DISTRO"
+}
+
+# Install required packages based on distribution
+install_dependencies() {
+    log_info "Installing required dependencies..."
+    
+    case $DISTRO in
+        ubuntu|debian)
+            # Check if packages are available, install if missing
+            missing_packages=()
+            for pkg in wget curl unzip tar; do
+                if ! command -v $pkg &> /dev/null; then
+                    missing_packages+=($pkg)
+                fi
+            done
+            
+            if [ ${#missing_packages[@]} -gt 0 ]; then
+                log_info "Installing missing packages: ${missing_packages[@]}"
+                apt-get update -qq
+                apt-get install -y "${missing_packages[@]}"
+            fi
+            ;;
+        centos|rhel|fedora)
+            # Use yum or dnf based on availability
+            if command -v dnf &> /dev/null; then
+                PKG_MANAGER="dnf"
+            else
+                PKG_MANAGER="yum"
+            fi
+            
+            missing_packages=()
+            for pkg in wget curl unzip tar; do
+                if ! command -v $pkg &> /dev/null; then
+                    missing_packages+=($pkg)
+                fi
+            done
+            
+            if [ ${#missing_packages[@]} -gt 0 ]; then
+                log_info "Installing missing packages: ${missing_packages[@]}"
+                $PKG_MANAGER install -y "${missing_packages[@]}"
+            fi
+            ;;
+        opensuse*|sles)
+            missing_packages=()
+            for pkg in wget curl unzip tar; do
+                if ! command -v $pkg &> /dev/null; then
+                    missing_packages+=($pkg)
+                fi
+            done
+            
+            if [ ${#missing_packages[@]} -gt 0 ]; then
+                log_info "Installing missing packages: ${missing_packages[@]}"
+                zypper install -y "${missing_packages[@]}"
+            fi
+            ;;
+        alpine)
+            missing_packages=()
+            for pkg in wget curl unzip tar; do
+                if ! command -v $pkg &> /dev/null; then
+                    missing_packages+=($pkg)
+                fi
+            done
+            
+            if [ ${#missing_packages[@]} -gt 0 ]; then
+                log_info "Installing missing packages: ${missing_packages[@]}"
+                apk add "${missing_packages[@]}"
+            fi
+            ;;
+        *)
+            log_warning "Unknown distribution: $DISTRO"
+            log_info "Assuming required packages (wget, curl, unzip, tar) are installed"
+            # Verify critical commands exist
+            for cmd in wget curl unzip tar; do
+                if ! command -v $cmd &> /dev/null; then
+                    log_error "$cmd is required but not installed. Please install it manually."
+                    exit 1
+                fi
+            done
+            ;;
+    esac
+}
+
+# Create system user (cross-distribution compatible)
+create_telegraf_user() {
+    if ! id "telegraf" &>/dev/null; then
+        log_info "Creating telegraf user..."
+        
+        # Try different user creation methods based on what's available
+        if command -v useradd &> /dev/null; then
+            # Most Linux distributions
+            useradd --system --no-create-home --shell /bin/false telegraf 2>/dev/null || \
+            useradd -r -s /bin/false telegraf 2>/dev/null || \
+            useradd -s /bin/false telegraf
+        elif command -v adduser &> /dev/null; then
+            # Alpine Linux
+            adduser -D -s /bin/false telegraf
+        else
+            log_error "Cannot create user: neither useradd nor adduser found"
+            exit 1
+        fi
+        
+        # Create home directory if it doesn't exist
+        if [ ! -d "/home/telegraf" ]; then
+            mkdir -p /home/telegraf
+            chown telegraf:telegraf /home/telegraf 2>/dev/null || chown telegraf /home/telegraf
+        fi
+    fi
+}
+
+# Install AWS CLI (cross-platform)
+install_aws_cli() {
+    if ! command -v aws &> /dev/null; then
+        log_info "Installing AWS CLI..."
+        
+        # Determine architecture
+        ARCH=$(uname -m)
+        case $ARCH in
+            x86_64)
+                AWS_CLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+                ;;
+            aarch64)
+                AWS_CLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+                ;;
+            *)
+                log_error "Unsupported architecture: $ARCH"
+                exit 1
+                ;;
+        esac
+        
+        # Download and install
+        curl -sL "$AWS_CLI_URL" -o "/tmp/awscliv2.zip"
+        cd /tmp
+        unzip -q awscliv2.zip
+        ./aws/install
+        rm -rf aws awscliv2.zip
+        
+        # Verify installation
+        if ! command -v aws &> /dev/null; then
+            log_error "AWS CLI installation failed"
+            exit 1
+        fi
+    else
+        log_info "AWS CLI already installed"
+    fi
+}
+
 # Load environment variables from .env file if it exists
 if [ -f ".env" ]; then
     log_info "Loading environment variables from .env file..."
@@ -48,6 +210,9 @@ CUSTOMER_ID="${VM_CUSTOMER_ID:-default-customer}"
 usage() {
     cat << EOF
 VM Utilization Agent Installer for Linux
+
+SUPPORTED DISTRIBUTIONS:
+    Ubuntu, Debian, CentOS, RHEL, Fedora, openSUSE, SLES, Alpine Linux
 
 USAGE:
     sudo $0 [OPTIONS]
@@ -88,6 +253,7 @@ NOTES:
     - Place a .env file in the same directory to load variables automatically
     - All AWS credentials are stored securely and not logged
     - Requires sudo privileges for installation
+    - Automatically detects and supports multiple Linux distributions
 
 EOF
 }
@@ -170,31 +336,41 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# Detect Linux distribution
+detect_distro
+
 # Validate parameters
 validate_parameters
 
 # Log configuration (without sensitive data)
 log_info "Configuration:"
+log_info "  Distribution: $DISTRO"
 log_info "  Telegraf URL: $TELEGRAF_URL"
 log_info "  S3 Bucket: $BUCKET_NAME"
 log_info "  AWS Region: $AWS_REGION"
 log_info "  Customer ID: $CUSTOMER_ID"
 log_info "  AWS Access Key: ${AWS_ACCESS_KEY:0:8}..."
 
+# Install dependencies
+install_dependencies
+
 # Check required commands
 log_info "Checking system requirements..."
-for cmd in wget tar systemctl; do
+for cmd in wget tar; do
     if ! command -v $cmd &> /dev/null; then
         log_error "$cmd is required but not installed"
         exit 1
     fi
 done
 
-# Create system user for telegraf if it doesn't exist
-if ! id "telegraf" &>/dev/null; then
-    log_info "Creating telegraf user..."
-    useradd --system --no-create-home --shell /bin/false telegraf
+# Check for systemctl (systemd)
+if ! command -v systemctl &> /dev/null; then
+    log_error "systemd is required (systemctl not found). This installer supports systemd-based distributions only."
+    exit 1
 fi
+
+# Create system user for telegraf
+create_telegraf_user
 
 # Create directories
 log_info "Creating directories..."
@@ -203,9 +379,9 @@ mkdir -p /var/lib/vm-metrics
 mkdir -p /var/log/telegraf
 mkdir -p /opt/telegraf
 
-# Set ownership
-chown telegraf:telegraf /var/lib/vm-metrics
-chown telegraf:telegraf /var/log/telegraf
+# Set ownership (handle both group scenarios)
+chown telegraf:telegraf /var/lib/vm-metrics 2>/dev/null || chown telegraf /var/lib/vm-metrics
+chown telegraf:telegraf /var/log/telegraf 2>/dev/null || chown telegraf /var/log/telegraf
 
 # Download and install Telegraf
 log_info "Downloading Telegraf..."
@@ -270,15 +446,8 @@ cat > /etc/telegraf/telegraf.conf << EOF
 [[inputs.system]]
 EOF
 
-# Install AWS CLI if not present
-if ! command -v aws &> /dev/null; then
-    log_info "Installing AWS CLI..."
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-    cd /tmp
-    unzip -q awscliv2.zip
-    ./aws/install
-    rm -rf aws awscliv2.zip
-fi
+# Install AWS CLI
+install_aws_cli
 
 # Configure AWS credentials for telegraf user
 log_info "Configuring AWS credentials..."
@@ -296,7 +465,7 @@ output = json
 EOF
 
 # Set secure permissions on AWS credentials
-chown -R telegraf:telegraf /home/telegraf/.aws
+chown -R telegraf:telegraf /home/telegraf/.aws 2>/dev/null || chown -R telegraf /home/telegraf/.aws
 chmod 700 /home/telegraf/.aws
 chmod 600 /home/telegraf/.aws/credentials
 chmod 600 /home/telegraf/.aws/config
@@ -350,7 +519,7 @@ echo "Metrics sync completed: \$(date)"
 EOF
 
 chmod +x /usr/local/bin/vm-metrics-sync.sh
-chown telegraf:telegraf /usr/local/bin/vm-metrics-sync.sh
+chown telegraf:telegraf /usr/local/bin/vm-metrics-sync.sh 2>/dev/null || chown telegraf /usr/local/bin/vm-metrics-sync.sh
 
 # Create S3 sync systemd service
 cat > /etc/systemd/system/vm-metrics-sync.service << EOF
@@ -411,10 +580,11 @@ fi
 # Test metric collection
 log_info "Testing metric collection..."
 sleep 30
-if [[ -f "/var/lib/vm-metrics/metrics_$(date +%Y%m%d).json" ]]; then
+METRICS_FILE="/var/lib/vm-metrics/metrics_$(date +%Y%m%d).json"
+if [[ -f "$METRICS_FILE" ]]; then
     log_success "Metrics file created successfully"
     log_info "Sample metrics:"
-    tail -n 3 "/var/lib/vm-metrics/metrics_$(date +%Y%m%d).json"
+    tail -n 3 "$METRICS_FILE"
 else
     log_warning "Metrics file not yet created (may take a few minutes)"
 fi
@@ -424,6 +594,7 @@ rm -rf /tmp/telegraf* /tmp/aws*
 
 log_success "VM Utilization Agent installation completed successfully!"
 log_info "Configuration:"
+log_info "  - Distribution: $DISTRO"
 log_info "  - Metrics collection: Every 30 seconds"
 log_info "  - S3 sync: Every 5 minutes"
 log_info "  - Local storage: /var/lib/vm-metrics/"

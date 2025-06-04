@@ -1,12 +1,12 @@
 # VM Utilization Agent
 
-A Telegraf-based utilization agent that collects CPU, memory, and disk metrics from virtual machines and uploads them to AWS S3. This agent provides automated deployment scripts for both Linux and Windows environments.
+A cross-platform Telegraf-based utilization agent that collects CPU, memory, and disk metrics from virtual machines and uploads them to AWS S3. This agent provides automated deployment scripts for multiple Linux distributions and Windows environments.
 
 ## 🚀 Quick Start
 
 ### Option 1: Environment Variables (Recommended)
 
-**Linux/macOS:**
+**Linux (Ubuntu, Debian, CentOS, RHEL, Fedora, openSUSE, SLES, Alpine):**
 ```bash
 # Interactive setup
 ./setup-env.sh
@@ -18,7 +18,7 @@ sudo ./install.sh
 **Windows:**
 ```powershell
 # Create environment file
-cp env-template.ps1 .env.ps1
+cp env-template-windows.ps1 .env.ps1
 # Edit .env.ps1 with your values
 
 # Load environment and install
@@ -45,6 +45,26 @@ sudo ./install.sh \
               -SecretKey "YOUR_AWS_SECRET_KEY"
 ```
 
+## 🐧 Linux Distribution Support
+
+The Linux installer automatically detects and supports the following distributions:
+
+- **Ubuntu** (18.04+) - `apt` package manager
+- **Debian** (9+) - `apt` package manager  
+- **CentOS** (7+) - `yum`/`dnf` package manager
+- **RHEL** (7+) - `yum`/`dnf` package manager
+- **Fedora** (30+) - `dnf` package manager
+- **openSUSE** - `zypper` package manager
+- **SLES** - `zypper` package manager
+- **Alpine Linux** - `apk` package manager
+
+The installer automatically:
+- Detects the distribution type
+- Uses the appropriate package manager
+- Handles different user creation methods
+- Adapts file ownership commands
+- Supports both x86_64 and aarch64 architectures
+
 ## 📋 What It Does
 
 - **Collects Metrics**: CPU, memory, and disk utilization every 30 seconds
@@ -52,27 +72,30 @@ sudo ./install.sh \
 - **Uploads to S3**: Automated sync to AWS S3 every 5 minutes
 - **Self-Managing**: Systemd services (Linux) or Windows Services for reliability
 - **Minimal Footprint**: ~2-5 MB storage per day per VM
+- **Cross-Platform**: Works on all major Linux distributions and Windows
 
 ## 📁 Repository Structure
 
 ```
 vm-utilization/
-├── README.md                                    # This file
-├── LICENSE                                      # MIT License
-├── VM-Utilisation-Agent-Installation-Guide.md  # Comprehensive installation guide
-├── install.sh                                   # Linux installation script
-├── install.ps1                                  # Windows installation script
-├── setup-env.sh                                 # Interactive environment setup
-├── env-template.txt                             # Linux environment template
-├── env-template.ps1                             # Windows environment template
-├── ENVIRONMENT-SETUP.md                         # Detailed environment setup guide
-└── docs/                                        # Additional documentation
+├── README.md                     # This file - getting started guide
+├── LICENSE                       # MIT License
+├── install.sh                    # Multi-distribution Linux installer
+├── install.ps1                   # Windows installation script
+├── setup-env.sh                  # Interactive environment setup (Linux)
+├── env-template.txt              # Linux environment template
+├── env-template-windows.ps1      # Windows environment template
+├── ENVIRONMENT-SETUP.md          # Detailed environment setup guide
+├── LIVE-TESTING-REPORT.md        # Live Azure testing results
+├── SECURITY.md                   # Security considerations
+└── docs/                         # Additional documentation
 ```
 
 ## 📚 Documentation
 
-- **[Installation Guide](VM-Utilisation-Agent-Installation-Guide.md)** - Complete installation, verification, and troubleshooting guide
-- **[Azure Testing Guide](https://github.com/ops-guru/vm-utilization/blob/main/docs/azure-testing-guide.md)** - How to test using Azure VMs
+- **[Environment Setup Guide](ENVIRONMENT-SETUP.md)** - Detailed configuration setup
+- **[Live Testing Report](LIVE-TESTING-REPORT.md)** - Real-world Azure deployment results
+- **[Security Guide](SECURITY.md)** - Security best practices and compliance
 
 ## 🛠 Prerequisites
 
@@ -82,6 +105,7 @@ vm-utilization/
 | **Internet Access** | HTTPS (443) | HTTPS (443) | For downloads and S3 sync |
 | **AWS Credentials** | S3 write permissions | S3 write permissions | For metrics upload |
 | **S3 Bucket** | Pre-existing | Pre-existing | Target for metrics storage |
+| **System Requirements** | systemd-based distro | Windows Server 2016+ | Service management |
 
 ## 🔧 Configuration
 
@@ -141,9 +165,10 @@ VM Utilization Agent Architecture:
 ```
 
 **Linux Implementation:**
+- Supports all major distributions automatically
 - Telegraf runs as systemd service
 - S3 sync via systemd timer (5-minute intervals)
-- Credentials stored in `/etc/vm-metrics/aws-credentials`
+- Secure credential storage with proper permissions
 
 **Windows Implementation:**
 - Telegraf runs as Windows Service
@@ -152,7 +177,7 @@ VM Utilization Agent Architecture:
 
 ## 🧪 Testing
 
-For testing the agent before deployment:
+### Local Testing
 
 1. **Clone the repository:**
    ```bash
@@ -160,9 +185,9 @@ For testing the agent before deployment:
    cd vm-utilization
    ```
 
-2. **Test locally:**
+2. **Test on your distribution:**
    ```bash
-   # Linux
+   # Linux (any supported distribution)
    sudo ./install.sh --telegraf-url "..." --bucket "test-bucket" --region "us-east-1" --access-key "..." --secret-key "..."
    
    # Windows
@@ -180,11 +205,20 @@ For testing the agent before deployment:
    Get-Service -Name "Telegraf"
    ```
 
+### Live Testing Results
+
+See [LIVE-TESTING-REPORT.md](LIVE-TESTING-REPORT.md) for comprehensive testing results including:
+- ✅ Azure cloud deployment testing
+- ✅ Multi-VM environment validation  
+- ✅ Performance benchmarks (30MB memory, minimal CPU)
+- ✅ Security compliance verification
+- ✅ End-to-end metric flow validation
+
 ## 📈 Monitoring
 
 ### Service Status Commands
 
-**Linux:**
+**Linux (All Distributions):**
 ```bash
 # Check Telegraf service
 sudo systemctl status telegraf
@@ -194,6 +228,9 @@ sudo systemctl status vm-metrics-sync.timer
 
 # View sync logs
 sudo journalctl -u vm-metrics-sync -f
+
+# Check distribution detection
+./install.sh --help  # Shows supported distributions
 ```
 
 **Windows:**
@@ -291,7 +328,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues and support:
 - **GitHub Issues**: [Create an issue](https://github.com/ops-guru/vm-utilization/issues)
-- **Documentation**: See [Installation Guide](VM-Utilisation-Agent-Installation-Guide.md)
+- **Documentation**: See [Installation Guide](ENVIRONMENT-SETUP.md)
 
 ## 🏷 Tags
 
